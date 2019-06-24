@@ -1,0 +1,12 @@
+.
+triggers
+boards
+coils
+injectors
+analog_sensors
+platforms
+/opt/avr8-gnu-toolchain-linux_x86_64/avr/include
+platforms/avr
+platforms/linux
+platforms/zmq
+engines

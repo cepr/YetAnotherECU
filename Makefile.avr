@@ -1,0 +1,139 @@
+
+AVR_ROOT:=/opt/avr8-gnu-toolchain-linux_x86_64
+CC:=$(AVR_ROOT)/bin/avr-gcc
+CXX:=$(AVR_ROOT)/bin/avr-g++
+OBJCOPY:=$(AVR_ROOT)/bin/avr-objcopy
+
+# Pre-processor options
+CPPFLAGS:=\
+  -DF_CPU=16000000L \
+  -DARDUINO=10809 \
+  -DARDUINO_AVR_MEGA2561 \
+  -DARDUINO_ARCH_AVR \
+  \
+  -I$(ARDUINO)/hardware/arduino/avr/cores/arduino \
+  -I$(ARDUINO)/hardware/arduino/avr/variants/mega
+
+# Compiler and linker common options
+CXXFLAGS:=\
+  -Os \
+  -Wall \
+  -Werror \
+  -std=gnu++11 \
+  \
+  -fno-exceptions \
+  -ffunction-sections \
+  -fdata-sections \
+  -fno-threadsafe-statics \
+  -flto \
+  \
+  -mmcu=atmega2561 \
+
+# Linker options
+LDFLAGS:=\
+  -fuse-linker-plugin \
+  -Wl,--gc-sections \
+  -mmcu=atmega2561
+
+# Build rules
+%.epp: %
+	$(OBJCOPY) \
+	  -O ihex \
+	  -j .eeprom \
+	  --set-section-flags=.eeprom=alloc,load \
+	  --no-change-warnings \
+	  --change-section-lma \
+	  .eeprom=0 \
+	  $< \
+	  $@
+
+%.hex: %
+	$(OBJCOPY) \
+	  -O ihex \
+	  -R .eeprom \
+	  $< \
+	  $@
+
+%.flash: %.hex
+	scp $< pi@192.168.86.174:/tmp/firmware.hex
+	ssh pi@192.168.86.174 /home/pi/flash /tmp/firmware.hex
+
+# Targets
+
+# Compile everything by default, but do no flash
+all: \
+     platforms/avr/avr_main.hex \
+     platforms/avr/avr_uart_test.hex \
+     platforms/avr/avr_timer_output_compare_test.hex \
+     platforms/avr/avr_timer_input_capture_test.hex \
+     platforms/avr/avr_ignitor_test.hex
+
+platforms/avr/avr_main: \
+     platforms/avr/avr_main.o \
+     platforms/avr/avr_oc3c.o \
+     platforms/avr/avr_oc1b.o \
+     platforms/avr/avr_oc1a.o \
+     platforms/avr/avr_main.o \
+     platforms/avr/avr_oc1c.o \
+     platforms/avr/avr_oc3b.o \
+     platforms/avr/avr_oc3a.o \
+     platforms/avr/avr_icp1.o \
+     platforms/avr/avr_scheduler.o \
+     platforms/avr/avr_init.o
+
+platforms/avr/avr_uart_test: \
+    platforms/avr/avr_uart_test.o \
+    platforms/avr/avr_scheduler.o \
+    platforms/avr/avr_uart_0.o \
+    platforms/avr/avr_init.o
+
+platforms/avr/avr_timer_output_compare_test: \
+    platforms/avr/avr_timer_output_compare_test.o \
+    platforms/avr/avr_scheduler.o \
+    platforms/avr/avr_oc3a.o \
+    platforms/avr/avr_oc3c.o \
+    platforms/avr/avr_init.o
+
+platforms/avr/avr_timer_input_capture_test: \
+    platforms/avr/avr_timer_input_capture_test.o \
+    platforms/avr/avr_icp1.o \
+    platforms/avr/avr_scheduler.o \
+    platforms/avr/avr_oc3a.o \
+    platforms/avr/avr_init.o
+
+platforms/avr/avr_ignitor_test: \
+    platforms/avr/avr_ignitor_test.o \
+    platforms/avr/avr_scheduler.o \
+    platforms/avr/avr_oc3a.o \
+    platforms/avr/avr_oc3c.o \
+    platforms/avr/avr_uart_0.o \
+    platforms/avr/avr_init.o
+
+clean:
+	$(RM) \
+	platforms/avr/avr_icp1.o \
+	platforms/avr/avr_ignitor_test \
+	platforms/avr/avr_ignitor_test.hex \
+	platforms/avr/avr_ignitor_test.o \
+	platforms/avr/avr_init.o \
+	platforms/avr/avr_main \
+	platforms/avr/avr_main.hex \
+	platforms/avr/avr_main.o \
+	platforms/avr/avr_oc1a.o \
+	platforms/avr/avr_oc1b.o \
+	platforms/avr/avr_oc1c.o \
+	platforms/avr/avr_oc3a.o \
+	platforms/avr/avr_oc3b.o \
+	platforms/avr/avr_oc3c.o \
+	platforms/avr/avr_scheduler.o \
+	platforms/avr/avr_timer_input_capture_test \
+	platforms/avr/avr_timer_input_capture_test.hex \
+	platforms/avr/avr_timer_input_capture_test.o \
+	platforms/avr/avr_timer_output_compare_test \
+	platforms/avr/avr_timer_output_compare_test.hex \
+	platforms/avr/avr_timer_output_compare_test.o \
+	platforms/avr/avr_uart_0.o \
+	platforms/avr/avr_uart_test \
+	platforms/avr/avr_uart_test.hex \
+	platforms/avr/avr_uart_test.o
+

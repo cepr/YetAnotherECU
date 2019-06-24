@@ -1,0 +1,27 @@
+# We are linking C++ objects
+LINK.o:=$(LINK.cc)
+CXXFLAGS:=-Wall -Werror -g -O0
+
+all: all_signals.bin
+
+simulation: platforms/linux/linux_main.cpp
+	$(LINK.cpp) $^ $(LOADLIBES) $(LDLIBS) -o $@
+
+trigger_wheel_signal.bin:
+	gnuradio/trigger_wheel_signal_generator.py
+
+all_signals.bin: trigger_wheel_signal.bin simulation
+	./simulation
+	gnuradio/combine_signals.py
+
+view: all_signals.bin
+	pulseview -I binary -i all_signals.bin
+
+clean:
+	$(RM) \
+	simulation \
+	trigger_wheel_signal.bin \
+	all_signals.bin \
+	coil1_signal.bin \
+	coil2_signal.bin
+
