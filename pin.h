@@ -62,7 +62,7 @@ public:
     };
 
     struct Listener {
-        virtual void on_pin_change(DigitalInputPin* pin, uint16_t time) = 0;
+        virtual void on_pin_change(uint16_t time) = 0;
     };
 
     /**

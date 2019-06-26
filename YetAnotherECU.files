@@ -3,6 +3,7 @@ Makefile.avr
 platforms/avr/avr_ignitor_test.cpp
 platforms/avr/avr_init.cpp
 platforms/avr/avr_init.h
+platforms/avr/avr_injector_test.cpp
 platforms/avr/avr_timer_input_capture_test.cpp
 platforms/avr/avr_timer_output_compare_test.cpp
 platforms/avr/avr_uart_0.cpp
@@ -18,7 +19,6 @@ board.h
 boards/stub_board.h
 coil.h
 engines/vw_type4.h
-injector.h
 injectors/pin_injector.h
 injectors/stub_injector.h
 linked_queue.h

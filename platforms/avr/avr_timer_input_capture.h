@@ -36,7 +36,7 @@ public:
     virtual void execute()
     {
         if (listener) {
-            listener->on_pin_change(this, read_input_capture_register());
+            listener->on_pin_change(read_input_capture_register());
         }
     }
 

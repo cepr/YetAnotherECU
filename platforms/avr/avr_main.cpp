@@ -15,9 +15,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-#define COIL_PULSE_DURATION 2500 // 10ms
-
 #include <avr/io.h>
 #include "avr_scheduler.h"
 #include "../../triggers/trigger_wheel_36_1.h"
@@ -29,21 +26,45 @@
 #include "avr_uart_0.h"
 #include "avr_oc3c.h"
 #include "avr_oc3a.h"
+#include "avr_oc1b.h"
+#include "avr_oc1a.h"
 #include "avr_init.h"
 
+// 200: misses at 13.8V
+#define COIL_PULSE_DURATION 250
+
+AvrDigitalOutput ignitor_en(&DDRE, &PORTE, 4, false);
 TriggerWheelSensor crankshaft_position(&icp1);
 AvrDigitalInput trigger_wheel_pin(&DDRD, &PIND, &PORTD, 4, false);
 
 Coil coil1(&oc3c, COIL_PULSE_DURATION);
 Coil coil2(&oc3a, COIL_PULSE_DURATION);
 
-VwType4 engine(&crankshaft_position, &coil1, &coil2);
+VwType4 engine(&crankshaft_position, &coil1, &coil2, &oc1b, &oc1a);
+
+class MyUartHandler: public Uart::Listener {
+public:
+    virtual void on_uart_receive(uint8_t data)
+    {
+        switch(data) {
+        case 'e':
+            ignitor_en.set(true);
+            break;
+        case 'd':
+            ignitor_en.set(false);
+            break;
+        }
+    }
+
+    virtual void on_uart_transmit_ready()
+    {
+    }
+};
 
 extern "C" void __cxa_pure_virtual()
 {
     while (true)
     {
-
     }
 }
 
@@ -51,8 +72,11 @@ int main(void)
 {
     avr_init();
 
-    // Set an internal pull-up on ICP1 (PD4)
-    PORTD |= _BV(PORTD4);
+    ignitor_en.init();
+
+    MyUartHandler handler;
+    uart0.set_listener(&handler);
+    uart0.begin();
 
     engine.begin();
     crankshaft_position.begin();

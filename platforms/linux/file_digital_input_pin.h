@@ -53,7 +53,7 @@ public:
             if (((level == RISING) && !prev && newValue) |
                 ((level == FALLING) && prev && !newValue))
             {
-                listener->on_pin_change(this, time);
+                listener->on_pin_change(time);
             }
         }
         prev = newValue;

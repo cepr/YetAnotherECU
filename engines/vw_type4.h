@@ -19,13 +19,25 @@
 #pragma once
 #include "../rotation_sensor.h"
 #include "../coil.h"
+#include <avr/io.h>
+
+// No injector clicking at 150
+#define INJECTOR_PULSE_DURATION 200
+
+#define TIMER_TOO_CLOSE 1000
 
 class VwType4 : public RotationSensor::Listener {
 public:
-    VwType4(RotationSensor *crankshaft, Coil *coil1, Coil *coil2) :
+    VwType4(RotationSensor *crankshaft,
+            Coil *coil1,
+            Coil *coil2,
+            DigitalOutputPin *injector1,
+            DigitalOutputPin *injector2) :
         crankshaft(crankshaft),
         coil1(coil1),
-        coil2(coil2)
+        coil2(coil2),
+        injector1(injector1),
+        injector2(injector2)
     {
     }
 
@@ -38,13 +50,30 @@ public:
     virtual void on_rotation_sensor_updated()
     {
         uint16_t spark_time1 = crankshaft->estimate_time_for_angle(0);
-        coil1->set_spark_time(spark_time1);
+        if (spark_time1 - TCNT1 < TIMER_TOO_CLOSE) {
+            coil1->set_spark_time(spark_time1);
+        }
+
         uint16_t spark_time2 = crankshaft->estimate_time_for_angle(32768);
-        coil2->set_spark_time(spark_time2);
+        if (spark_time2 - TCNT1 < TIMER_TOO_CLOSE) {
+            coil2->set_spark_time(spark_time2);
+        }
+
+        uint16_t injector_time1 = crankshaft->estimate_time_for_angle(16000);
+        if (injector_time1 - TCNT1 < TIMER_TOO_CLOSE) {
+            injector1->set(true, injector_time1, INJECTOR_PULSE_DURATION);
+        }
+
+        uint16_t injector_time2 = crankshaft->estimate_time_for_angle(48000);
+        if (injector_time2 - TCNT1 < TIMER_TOO_CLOSE) {
+            injector2->set(true, injector_time2, INJECTOR_PULSE_DURATION);
+        }
     }
 
 protected:
     RotationSensor *crankshaft;
     Coil *coil1;
     Coil *coil2;
+    DigitalOutputPin *injector1;
+    DigitalOutputPin *injector2;
 };

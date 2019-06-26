@@ -3,7 +3,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Trigger Wheel Signal Generator
-# Generated: Wed Jun 19 22:26:03 2019
+# Generated: Tue Jun 25 20:08:19 2019
 ##################################################
 
 
@@ -29,7 +29,7 @@ class trigger_wheel_signal_generator(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
-        self.blocks_vector_source_x_0_0 = blocks.vector_source_b([0]*45+[1]*45, True, 1, [])
+        self.blocks_vector_source_x_0_0 = blocks.vector_source_b([0]*bits+[1]*bits, True, 1, [])
         self.blocks_vector_source_x_0 = blocks.vector_source_b([1], True, 1, [])
         self.blocks_stream_mux_0_0 = blocks.stream_mux(gr.sizeof_char*1, ((teeth-1)*2*bits, 2*bits))
         self.blocks_head_0 = blocks.head(gr.sizeof_char*1, bits*72*100)
@@ -55,6 +55,7 @@ class trigger_wheel_signal_generator(gr.top_block):
 
     def set_bits(self, bits):
         self.bits = bits
+        self.blocks_vector_source_x_0_0.set_data([0]*self.bits+[1]*self.bits, [])
         self.blocks_head_0.set_length(self.bits*72*100)
 
 

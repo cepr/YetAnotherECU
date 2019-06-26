@@ -16,29 +16,41 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
-#include <stdint.h>
+#include "avr_uart_0.h"
+#include "avr_oc1b.h"
+#include "avr_scheduler.h"
+#include "avr_init.h"
 
-/**
- * @brief Abstract class representing one injector channel.
- */
-class Injector {
-    /**
-     * @brief Activate or deactivate the generation of the injector signal.
-     *
-     * @param enable
-     *      `true` to enable, `false` to disable.
-     */
-    virtual void enable(bool enabled) = 0;
+#define IGNITOR_PULSE_DURATION 200
 
-    /**
-     * @brief Set the injector pulse timing.
-     *
-     * @param start
-     *      Start time relative to the board timer and the begining of the cycle.
-     *
-     * @param duration
-     *      Duration in units of the board timer.
-     */
-    virtual void set(uint16_t start, uint16_t duration) = 0;
+class MyUartHandler: public Uart::Listener {
+public:
+    virtual void on_uart_receive(uint8_t data)
+    {
+        switch(data) {
+        case 'e':
+            oc1b.set(true, 0, IGNITOR_PULSE_DURATION);
+            break;
+        case 'd':
+            oc1b.set(false);
+            break;
+        }
+    }
+
+    virtual void on_uart_transmit_ready()
+    {
+    }
 };
+
+int main(void)
+{
+    avr_init();
+
+    MyUartHandler handler;
+    uart0.set_listener(&handler);
+    uart0.begin();
+
+    while(true) {
+        scheduler.execute();
+    }
+}

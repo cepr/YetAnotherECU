@@ -23,9 +23,8 @@
 
 class MyHandler: public DigitalInputPin::Listener {
 public:
-    virtual void on_pin_change(DigitalInputPin* pin, uint16_t time)
+    virtual void on_pin_change(uint16_t time)
     {
-        (void)pin;
         oc3a.set(true, time, 10000);
     }
 };

@@ -39,7 +39,6 @@ public:
      */
     TriggerWheelSensor(DigitalInputPin* pin) :
         pin(pin),
-        init_count(0),
         tooth_time(0),
         tooth_angle(0),
         tooth_number(0)
@@ -84,38 +83,30 @@ public:
 
 protected:
     // DigitalInputPin::Listener::on_change_pin
-    virtual void on_pin_change(DigitalInputPin* pin, uint16_t time)
+    virtual void on_pin_change(uint16_t time)
     {
-        // Unused argument
-        (void)pin;
         // how much time since the last tooth
         uint16_t duration = time - tooth_time;
         tooth_time = time;
         // fill in the shift register at boot
-        if (init_count < 8) {
+        // check if we skipped the missing tooth
+        uint16_t threshold = sr.average() * 1.5;
+        if ((tooth_number < 8) || (duration < threshold)) {
+            // Regular tooth
+            tooth_number++;
             sr.push(duration);
-            init_count++;
         } else {
-            // check if we skipped the missing tooth
-            uint16_t threshold = sr.average() * 1.5;
-            if (duration < threshold) {
-                // Regular tooth
-                tooth_number++;
-                sr.push(duration);
-            } else {
-                // We skipped the missing tooth, we are now back on tooth 0
-                tooth_number = 0;
-            }
-            tooth_angle = (((uint32_t)tooth_number)<<16)/36;
-            // Notify the listener
-            if (this->listener) {
-                this->listener->on_rotation_sensor_updated();
-            }
+            // We skipped the missing tooth, we are now back on tooth 0
+            tooth_number = 0;
+        }
+        tooth_angle = (((uint32_t)tooth_number)<<16)/36;
+        // Notify the listener
+        if (this->listener) {
+            this->listener->on_rotation_sensor_updated();
         }
     }
 
     DigitalInputPin* pin;
-    uint8_t init_count;
     uint16_t tooth_time;
     uint16_t tooth_angle;
     uint8_t tooth_number;
