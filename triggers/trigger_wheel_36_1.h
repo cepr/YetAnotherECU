@@ -41,7 +41,10 @@ public:
         pin(pin),
         tooth_time(0),
         tooth_angle(0),
-        tooth_number(0)
+        tooth_number(0),
+        synchronized(false),
+        last_pin_change_time(0),
+        rpm(0)
     {
     }
 
@@ -55,16 +58,25 @@ public:
     }
 
     /**
-     * @brief Estimate the time as which the wheel will be at the specified angle.
+     * @brief Estimate the time at which the wheel will be at the specified angle.
      *
      * @param angle
      *      Angle between 0 and 65535
      *
      * @return
      *      A time expressed in the platform tick.
+     *
+     * If the position is unknown, or if the returned value is too far in the future,
+     * the maximum value is returned, which is tick-1.
      */
     virtual uint16_t estimate_time_for_angle(uint16_t angle)
     {
+        if (tick - last_pin_change_time > sr.average() * 3) {
+            synchronized = false;
+        }
+        if (!synchronized) {
+            return tick-1;
+        }
         uint16_t ticks_per_tooth = sr.average();
         uint16_t angle_diff = angle - tooth_angle;
         // time_diff = angle_diff * tick_per_tooth * 36 / 65536
@@ -77,14 +89,24 @@ public:
         // dividing by 16 is equivalent to shifting to the right by 4 bits
         // dividing by 1024 is equivalent to shifting to the right by 10 bits
         uint32_t x = (uint32_t)angle_diff * (uint32_t)ticks_per_tooth;
-        uint16_t time_diff = ((x >> 1) + (x >> 4)) >> 10;
-        return tooth_time + time_diff;
+        uint32_t time_diff = ((x >> 1) + (x >> 4)) >> 10;
+        if (!(time_diff >> 16)) {
+            return tooth_time + time_diff;
+        } else {
+            return tick-1;
+        }
+    }
+
+    virtual uint16_t get_rpm()
+    {
+        return rpm;
     }
 
 protected:
     // DigitalInputPin::Listener::on_change_pin
     virtual void on_pin_change(uint16_t time)
     {
+        last_pin_change_time = time;
         // how much time since the last tooth
         uint16_t duration = time - tooth_time;
         tooth_time = time;
@@ -97,13 +119,16 @@ protected:
             sr.push(duration);
         } else {
             // We skipped the missing tooth, we are now back on tooth 0
+            if (tooth_number == 34) {
+                synchronized = true;
+                rpm = 416666.7 / sr.average();
+            } else {
+                synchronized = false;
+                rpm = 0;
+            }
             tooth_number = 0;
         }
         tooth_angle = (((uint32_t)tooth_number)<<16)/36;
-        // Notify the listener
-        if (this->listener) {
-            this->listener->on_rotation_sensor_updated();
-        }
     }
 
     DigitalInputPin* pin;
@@ -111,4 +136,7 @@ protected:
     uint16_t tooth_angle;
     uint8_t tooth_number;
     ShiftRegister sr;
+    bool synchronized;
+    uint16_t last_pin_change_time;
+    uint16_t rpm;
 };

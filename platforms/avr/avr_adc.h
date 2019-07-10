@@ -17,61 +17,72 @@
  */
 
 #pragma once
-#include "../../linked_queue.h"
 #include "../../task.h"
 #include "avr_analog_input.h"
 #include <avr/io.h>
 
+// TODO: implement this task as an interrupt task instead of a background task
 class AvrADC : public Task {
 public:
     /**
      * @brief
-     *      Default constructor
+     *      Constructor
      */
     AvrADC() :
-        iterator(&list),
-        analog_input(0)
+        index(0),
+        state(0)
     {
     }
 
-    /**
-     * @brief
-     *      Register an analog input to read
-     *
-     * @param analog_input
-     *      Pointer to a AvrAnalogInput
-     */
-    void register_analog_input(AvrAnalogInput* analog_input)
-    {
-        list.add(analog_input);
+    AnalogInputPin* get(uint8_t channel) {
+        channels[channel].enabled = true;
+        return &channels[channel];
     }
 
 protected:
+
     // Task implementation
     void execute()
     {
-        if (!analog_input) {
-            // Get the next channel to read
-            analog_input = iterator.next();
-            if (!analog_input) {
-                // Nothing to read
-                return;
+        switch(state) {
+        case 0:
+            // Get the next channel
+            index = (index + 1) & 7;
+            if (!channels[index].enabled) {
+                // This channel is not enabled, abort.
+                break;
             }
+
             // Select the ADC channel
-            ADMUX = analog_input->channel;
+            ADMUX = _BV(REFS0) | // AVCC with external capacitor at AREF pin
+                    index;
+
+            state++;
+            break;
+
+        case 1:
             // Start the conversion
             ADCSRA = _BV(ADEN) | // ADC Enable
                      _BV(ADSC) | // ADC Start Conversion
                      _BV(ADIF);  // ADC Interrupt Flag
-        } else if (ADCSRA & _BV(ADIF)) {
-            // This bit is set when an ADC conversion completes
-            // and the Data Registers are updated.
-            analog_input->on_adc_conversion_complete(ADC);
-            analog_input = 0;
+            state++;
+            break;
+
+        default:
+            if (ADCSRA & _BV(ADSC)) {
+                // Conversion is not complete, abort
+                break;
+            }
+
+            channels[index].value = ADC;
+            if (channels[index].listener) {
+                channels[index].listener->on_analog_pin_reading_complete(channels[index].value);
+            }
+            state = 0;
         }
     }
 
-    LinkedQueue<AvrAnalogInput> list;
-    LinkedQueue<AvrAnalogInput>::Iterator iterator;
-    AvrAnalogInput* analog_input;
+    AvrAnalogInput channels[8];
+    uint8_t index;
+    uint8_t state;
 };

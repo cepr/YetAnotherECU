@@ -33,5 +33,5 @@ ISR(USART0_UDRE_vect)
 {
     // Deactivate the interrupt until something is written again
     UCSR0B &= ~_BV(UDRIE0);
-    scheduler.add_interrupt_task(&uart0.transmit_handler);
+    //scheduler.add_interrupt_task(&uart0.transmit_handler);
 }

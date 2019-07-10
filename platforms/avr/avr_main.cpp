@@ -29,37 +29,26 @@
 #include "avr_oc1b.h"
 #include "avr_oc1a.h"
 #include "avr_init.h"
-
-// 200: misses at 13.8V
-#define COIL_PULSE_DURATION 250
+#include "avr_adc.h"
+#include "avr_analog_input.h"
+#include "../../stream/analog_input_pin_serializable.h"
+#include "../../stream/rotation_sensor_serializable.h"
+#include "../../stream/kiss.h"
+#include "../../stream/telemetry_handler.h"
+#include "../../stream/command_handler.h"
+#include "../../stream/serializable_variable.h"
+#include "../../parameters.h"
 
 AvrDigitalOutput ignitor_en(&DDRE, &PORTE, 4, false);
 TriggerWheelSensor crankshaft_position(&icp1);
 AvrDigitalInput trigger_wheel_pin(&DDRD, &PIND, &PORTD, 4, false);
 
-Coil coil1(&oc3c, COIL_PULSE_DURATION);
-Coil coil2(&oc3a, COIL_PULSE_DURATION);
+Coil coil1(&oc3c);
+Coil coil2(&oc3a);
 
 VwType4 engine(&crankshaft_position, &coil1, &coil2, &oc1b, &oc1a);
 
-class MyUartHandler: public Uart::Listener {
-public:
-    virtual void on_uart_receive(uint8_t data)
-    {
-        switch(data) {
-        case 'e':
-            ignitor_en.set(true);
-            break;
-        case 'd':
-            ignitor_en.set(false);
-            break;
-        }
-    }
-
-    virtual void on_uart_transmit_ready()
-    {
-    }
-};
+AvrADC adc;
 
 extern "C" void __cxa_pure_virtual()
 {
@@ -68,20 +57,79 @@ extern "C" void __cxa_pure_virtual()
     }
 }
 
+
+
 int main(void)
 {
     avr_init();
 
     ignitor_en.init();
+    ignitor_en.set(true);
 
-    MyUartHandler handler;
-    uart0.set_listener(&handler);
-    uart0.begin();
-
-    engine.begin();
+    scheduler.add_background_task(&adc);
+    scheduler.add_background_task(&engine.coil_handler_1);
+    scheduler.add_background_task(&engine.coil_handler_2);
+    scheduler.add_background_task(&engine.injector_handler_1);
+    scheduler.add_background_task(&engine.injector_handler_2);
     crankshaft_position.begin();
 
+    AnalogInputPin* sensor_map = adc.get(0);
+    AnalogInputPin* sensor_iat = adc.get(1);
+    AnalogInputPin* sensor_head_temp = adc.get(2);
+    AnalogInputPin* sensor_tps = adc.get(3);
+    AnalogInputPin* sensor_oil_pressure = adc.get(4);
+    AnalogInputPin* sensor_fuel_pressure = adc.get(5);
+    AnalogInputPin* sensor_oxygen = adc.get(6);
+    AnalogInputPin* sensor_battery = adc.get(7);
+
+    AnalogInputPinSerializable sensor_map_serializer(TAG_MANIFOLD_AIR_PRESSURE, sensor_map);
+    AnalogInputPinSerializable sensor_iat_serializer(TAG_INTAKE_AIR_TEMPERATURE, sensor_iat);
+    AnalogInputPinSerializable sensor_head_temp_serializer(TAG_HEAD_TEMPERATURE, sensor_head_temp);
+    AnalogInputPinSerializable sensor_tps_serializer(TAG_THROTTLE_POSITION, sensor_tps);
+    AnalogInputPinSerializable sensor_oil_pressue_serializer(TAG_OIL_PRESSURE, sensor_oil_pressure);
+    AnalogInputPinSerializable sensor_fuel_pressure_serializer(TAG_FUEL_PRESSURE, sensor_fuel_pressure);
+    AnalogInputPinSerializable sensor_oxygen_serializer(TAG_OXYGEN, sensor_oxygen);
+    AnalogInputPinSerializable sensor_battery_serializer(TAG_BATTERY_VOLTAGE, sensor_battery);
+    RotationSensorSerializable sensor_rpm_serializable(TAG_CRANKSHAFT_RPM, &crankshaft_position);
+
+    // Sensors
+
+    // Telemetry
+    Serializable* telemetry_fields[] = {
+        &sensor_map_serializer,
+        &sensor_iat_serializer,
+        &sensor_head_temp_serializer,
+        &sensor_tps_serializer,
+        &sensor_oil_pressue_serializer,
+        &sensor_fuel_pressure_serializer,
+        &sensor_oxygen_serializer,
+        &sensor_battery_serializer,
+        &sensor_rpm_serializable,
+        0
+    };
+    TelemetryHandler telemetry_handler(telemetry_fields);
+    KissEncoder kiss_encoder;
+    telemetry_handler.pipe(&kiss_encoder);
+    kiss_encoder.pipe(&uart0);
+    scheduler.add_background_task(&telemetry_handler);
+
+    // Commanding
+    Serializable* command_fields[] = {
+        &parameters.crankshaft_offset,
+        &parameters.ignition_pulse_width,
+        0
+    };
+    KissDecoder kiss_decoder;
+    CommandHandler command_handler(command_fields);
+    uart0.pipe(&kiss_decoder);
+    kiss_decoder.pipe(&command_handler);
+
+    // Start the platform drivers
+    uart0.begin();
+
+    // Main loop
     while(true) {
+        tick = TCNT1;
         scheduler.execute();
     }
 }

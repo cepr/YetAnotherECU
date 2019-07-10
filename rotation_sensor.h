@@ -42,8 +42,14 @@ public:
      */
     virtual uint16_t estimate_time_for_angle(uint16_t angle) = 0;
 
+    /**
+     * @brief Return the rotations per minutes.
+     * @return
+     */
+    virtual uint16_t get_rpm() = 0;
+
     struct Listener {
-        virtual void on_rotation_sensor_updated() = 0;
+        virtual void on_rotation_sensor_updated(bool valid) = 0;
     };
 
     /**

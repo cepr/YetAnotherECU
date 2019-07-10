@@ -20,15 +20,11 @@
 #include "avr_scheduler.h"
 #include "avr_init.h"
 
-class MyUartHandler: public Uart::Listener {
+class MyUartHandler: public OutputStream {
 public:
-    virtual void on_uart_receive(uint8_t data)
+    virtual uint8_t write(uint8_t data)
     {
-        uart0.write(data);
-    }
-
-    virtual void on_uart_transmit_ready()
-    {
+        return uart0.write(data);
     }
 };
 
@@ -37,7 +33,7 @@ int main(void)
     avr_init();
 
     MyUartHandler handler;
-    uart0.set_listener(&handler);
+    uart0.pipe(&handler);
     uart0.begin();
 
     while(true) {

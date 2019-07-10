@@ -1,3 +1,11 @@
+parameters.cpp
+parameters.h
+stream/analog_input_pin_serializable.h
+stream/rotation_sensor_serializable.h
+stream/serializable.h
+stream/serializable_variable.h
+stream/telemetry_handler.h
+stream/command_handler.h
 COPYING
 Makefile.avr
 platforms/avr/avr_ignitor_test.cpp
@@ -9,6 +17,8 @@ platforms/avr/avr_timer_output_compare_test.cpp
 platforms/avr/avr_uart_0.cpp
 platforms/avr/avr_uart_0.h
 platforms/avr/avr_uart_test.cpp
+stream/kiss.h
+stream/output_stream.h
 uart.h
 Makefile.linux
 YetAnotherECU.ino

@@ -18,22 +18,20 @@
 
 #pragma once
 #include <stdint.h>
+#include "stream/output_stream.h"
 
-class Uart {
+class Uart: public OutputStream {
 public:
-
-    struct Listener {
-        virtual void on_uart_receive(uint8_t data) = 0;
-        virtual void on_uart_transmit_ready() = 0;
-    };
-
-    void set_listener(Listener* listener)
+    Uart() :
+        sink(0)
     {
-        this->listener = listener;
     }
 
-    virtual void write(uint8_t data) = 0;
+    void pipe(OutputStream *sink)
+    {
+        this->sink = sink;
+    }
 
 protected:
-    Listener *listener;
+    OutputStream *sink;
 };

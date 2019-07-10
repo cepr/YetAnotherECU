@@ -4,14 +4,16 @@ CXXFLAGS:=-Wall -Werror -g -O0
 
 all: all_signals.bin
 
-simulation: platforms/linux/linux_main.cpp
-	$(LINK.cpp) $^ $(LOADLIBES) $(LDLIBS) -o $@
+platforms/linux/linux_main: \
+	platforms/linux/linux_main.o \
+	parameters.o
+#	$(LINK.cpp) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 trigger_wheel_signal.bin:
 	gnuradio/trigger_wheel_signal_generator.py
 
-all_signals.bin: trigger_wheel_signal.bin simulation
-	./simulation
+all_signals.bin: trigger_wheel_signal.bin platforms/linux/linux_main
+	platforms/linux/linux_main
 	gnuradio/combine_signals.py
 
 view: all_signals.bin
@@ -19,7 +21,7 @@ view: all_signals.bin
 
 clean:
 	$(RM) \
-	simulation \
+	platforms/linux/linux_main \
 	trigger_wheel_signal.bin \
 	all_signals.bin \
 	coil1_signal.bin \

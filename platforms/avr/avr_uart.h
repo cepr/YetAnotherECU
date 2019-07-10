@@ -26,7 +26,7 @@ class AvrUart: public Uart {
 public:
     AvrUart() :
         Uart(),
-        transmit_handler(this),
+//        transmit_handler(this),
         receive_handler(this)
     {
     }
@@ -36,38 +36,45 @@ public:
     {
         cli();
         UCSRnA(0);
-        UCSRnB(_BV(RXCIE0) | _BV(UDRIE0) | _BV(RXEN0) | _BV(TXEN0));
+        UCSRnB(_BV(RXCIE0) | _BV(RXEN0) | _BV(TXEN0));
         UCSRnC(_BV(UCSZ01) | _BV(UCSZ00));
         UBRRn(ubrr);
         sei();
-        // Expect the USART Data Register Empty Interrupt to kick in at this point.
-        // The client should register its listener before calling begin()
     }
 
-    virtual void write(uint8_t data)
+    virtual uint8_t write(uint8_t data)
     {
+        // Check the UART write buffer is ready
+        if ((UCSRnA() & _BV(UDRE0)) == 0) {
+            // The USART data register is not empty
+            return 0;
+        }
         // Write the byte into the UART write buffer
         UDRn(data);
         // Enable the write buffer empty interrupt
         UCSRnB(UCSRnB() | _BV(UDRIE0));
+        // Done
+        return 1;
     }
 
-    class AvrUartTransmitHandler: public Task {
-    public:
-        AvrUartTransmitHandler(AvrUart* uart) :
-            uart(uart)
-        {
-        }
+//    class AvrUartTransmitHandler: public Task {
+//    public:
+//        AvrUartTransmitHandler(AvrUart* uart) :
+//            uart(uart)
+//        {
+//        }
 
-        virtual void execute()
-        {
-            // Transmit buffer empty
-            uart->listener->on_uart_transmit_ready();
-        }
+//        virtual void execute()
+//        {
+//            // Transmit buffer empty
+//            if (uart->listener) {
+//                uart->listener->on_uart_transmit_ready();
+//            }
+//        }
 
-    protected:
-        AvrUart* uart;
-    };
+//    protected:
+//        AvrUart* uart;
+//    };
 
     class AvrUartReceiveHandler: public Task {
     public:
@@ -79,7 +86,7 @@ public:
         virtual void execute()
         {
             // Receive buffer has some data
-            uart->listener->on_uart_receive(received_byte);
+            uart->sink->write(received_byte);
         }
         uint8_t received_byte;
 
@@ -87,7 +94,7 @@ public:
         AvrUart* uart;
     };
 
-    AvrUartTransmitHandler transmit_handler;
+//    AvrUartTransmitHandler transmit_handler;
     AvrUartReceiveHandler receive_handler;
 
 protected:

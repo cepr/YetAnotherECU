@@ -2,4 +2,11 @@
 *.bin
 *.hex
 *.user
+/platforms/avr/avr_ignitor_test
+/platforms/avr/avr_injector_test
+/platforms/avr/avr_main
+/platforms/avr/avr_timer_input_capture_test
+/platforms/avr/avr_timer_output_compare_test
+/platforms/avr/avr_uart_test
+/platforms/linux/linux_main
 

@@ -19,3 +19,4 @@
 #include "avr_scheduler.h"
 
 AvrScheduler scheduler;
+uint16_t tick;

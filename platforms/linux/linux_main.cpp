@@ -23,8 +23,9 @@
 #include "file_digital_input_pin.h"
 #include "file_digital_output_pin.h"
 
-#define COIL_PULSE_DURATION 10
 #define SCHEDULER_CALLS_PER_TICK 20
+
+uint16_t tick;
 
 int main()
 {
@@ -33,17 +34,24 @@ int main()
     TriggerWheelSensor crankshaft_position(&trigger_wheel_pin);
     FileDigitalOutputPin coil1_pin("coil1_signal.bin");
     FileDigitalOutputPin coil2_pin("coil2_signal.bin");
-    Coil coil1(&coil1_pin, COIL_PULSE_DURATION);
-    Coil coil2(&coil2_pin, COIL_PULSE_DURATION);
-    VwType4 engine(&crankshaft_position, &coil1, &coil2);
+    Coil coil1(&coil1_pin);
+    Coil coil2(&coil2_pin);
+    FileDigitalOutputPin injector1_pin("injector1_signal.bin");
+    FileDigitalOutputPin injector2_pin("injector2_signal.bin");
+    VwType4 engine(&crankshaft_position, &coil1, &coil2, &injector1_pin, &injector2_pin);
+
+    tick = 0;
 
     // Configure the scheduler
     scheduler.add_background_task(&trigger_wheel_pin);
     scheduler.add_background_task(&coil1_pin);
     scheduler.add_background_task(&coil2_pin);
-
-    // Start
-    engine.begin();
+    scheduler.add_background_task(&injector1_pin);
+    scheduler.add_background_task(&injector2_pin);
+    scheduler.add_background_task(&engine.coil_handler_1);
+    scheduler.add_background_task(&engine.coil_handler_2);
+    scheduler.add_background_task(&engine.injector_handler_1);
+    scheduler.add_background_task(&engine.injector_handler_2);
     crankshaft_position.begin();
 
     while (trigger_wheel_pin.step()) {
@@ -52,9 +60,13 @@ int main()
             scheduler.execute();
         }
 
+        tick++;
+
         // Write outputs
         coil1_pin.step();
         coil2_pin.step();
+        injector1_pin.step();
+        injector2_pin.step();
     }
     return 0;
 }

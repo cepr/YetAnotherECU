@@ -23,9 +23,9 @@
 
 #define IGNITOR_PULSE_DURATION 200
 
-class MyUartHandler: public Uart::Listener {
+class MyUartHandler: public OutputStream {
 public:
-    virtual void on_uart_receive(uint8_t data)
+    virtual uint8_t write(uint8_t data)
     {
         switch(data) {
         case 'e':
@@ -35,10 +35,7 @@ public:
             oc1b.set(false);
             break;
         }
-    }
-
-    virtual void on_uart_transmit_ready()
-    {
+        return 1;
     }
 };
 
@@ -47,7 +44,7 @@ int main(void)
     avr_init();
 
     MyUartHandler handler;
-    uart0.set_listener(&handler);
+    uart0.pipe(&handler);
     uart0.begin();
 
     while(true) {

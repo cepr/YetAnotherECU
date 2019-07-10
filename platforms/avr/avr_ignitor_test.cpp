@@ -28,9 +28,9 @@
 
 AvrDigitalOutput ignitor_en(&DDRE, &PORTE, 4, false);
 
-class MyUartHandler: public Uart::Listener {
+class MyUartHandler: public OutputStream {
 public:
-    virtual void on_uart_receive(uint8_t data)
+    virtual uint8_t write(uint8_t data)
     {
         switch(data) {
         case 'e':
@@ -48,10 +48,7 @@ public:
             oc3a.set(true, 0, COIL_PULSE_DURATION);
             break;
         }
-    }
-
-    virtual void on_uart_transmit_ready()
-    {
+        return 1;
     }
 };
 
@@ -61,7 +58,7 @@ int main(void)
     ignitor_en.init();
 
     MyUartHandler handler;
-    uart0.set_listener(&handler);
+    uart0.pipe(&handler);
     uart0.begin();
 
     while(true) {

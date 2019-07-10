@@ -22,11 +22,10 @@
 
 class AvrAnalogInput : public AnalogInputPin {
 public:
-    AvrAnalogInput(uint8_t channel) :
-        channel(channel),
-        value(value),
-        listener(0),
-        prev_element(0)
+    AvrAnalogInput() :
+        enabled(false),
+        value(0),
+        listener(0)
     {
     }
 
@@ -39,19 +38,8 @@ public:
         this->listener = listener;
     }
 
-    void on_adc_conversion_complete(uint16_t value) {
-        this->value = value;
-        if (this->listener) {
-            this->listener->on_analog_pin_reading_complete(value);
-        }
-    }
-
-    // Only to be used by AvrADC
-    uint8_t channel;
-
-protected:
+    // Accessed by ADC driver
+    bool enabled;
     uint16_t value;
     Listener* listener;
-    // LinkedList
-    class AvrAnalogInput* prev_element;
 };

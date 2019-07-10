@@ -35,7 +35,7 @@ public:
      *      Default constructor.
      */
     Task() :
-        prev_element(0)
+        next_element(0)
     {
     }
 
@@ -45,5 +45,5 @@ public:
     virtual void execute() = 0;
 
     // LinkedQueue
-    class Task* prev_element;
+    class Task* next_element;
 };

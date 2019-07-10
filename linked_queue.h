@@ -21,8 +21,8 @@
 /**
  * Linked queue of elements.
  *
- * The queue element type must contain an attribute "prev_element", pointing to
- * the previous element of the list. Don't access this attribute directly.
+ * The queue element type must contain an attribute "next_element", pointing to
+ * the next element of the list. Don't access this attribute directly.
  *
  * The list is a FIFO. The elements are queued using the `add()` method, and
  * remove the oldest element by calling `remove()`.
@@ -52,11 +52,14 @@ public:
      *      Pointer to the element to append.
      */
     void add(Element* element) {
-        element->prev_element = 0;
+        if ((element->next_element != 0) || (element == last)) {
+            // Element is already in a queue, ignore
+            return;
+        }
         Synchronized::lock();
         if (last) {
             // Non-empty list
-            last->prev_element = element;
+            last->next_element = element;
         } else {
             // Empty list
             first = element;
@@ -75,13 +78,15 @@ public:
     Element* remove() {
         Synchronized::lock();
         Element* ret = first;
-        if (first) {
+        if (ret) {
             // Non-empty list
-            first = first->prev_element;
+            first = ret->next_element;
             if (!first) {
                 // It was the last element
                 last = 0;
             }
+            // `first` is not part of the queue anymore, clear its pointer
+            ret->next_element = 0;
         }
         Synchronized::unlock();
         return ret;

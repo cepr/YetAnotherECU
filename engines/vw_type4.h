@@ -19,14 +19,17 @@
 #pragma once
 #include "../rotation_sensor.h"
 #include "../coil.h"
-#include <avr/io.h>
+#include "../task.h"
+#include "../scheduler.h"
 
-// No injector clicking at 150
-#define INJECTOR_PULSE_DURATION 200
+// No injector clicking at 150, idle should be between 2.5 and 3.5 ms, divided by two because of wasted spark setup.
+//
+#define INJECTOR_PULSE_DURATION 375
 
 #define TIMER_TOO_CLOSE 1000
+#define TIMER_TOO_FAR 32768
 
-class VwType4 : public RotationSensor::Listener {
+class VwType4 {
 public:
     VwType4(RotationSensor *crankshaft,
             Coil *coil1,
@@ -34,46 +37,70 @@ public:
             DigitalOutputPin *injector1,
             DigitalOutputPin *injector2) :
         crankshaft(crankshaft),
-        coil1(coil1),
-        coil2(coil2),
-        injector1(injector1),
-        injector2(injector2)
+        coil_handler_1(crankshaft, coil1, 0),
+        coil_handler_2(crankshaft, coil2, 32768),
+        injector_handler_1(crankshaft, injector1, 500),
+        injector_handler_2(crankshaft, injector2, 32768+500)
     {
     }
 
-    void begin()
-    {
-        crankshaft->set_listener(this);
-    }
-
-    // RotationSensor::Listener
-    virtual void on_rotation_sensor_updated()
-    {
-        uint16_t spark_time1 = crankshaft->estimate_time_for_angle(0);
-        if (spark_time1 - TCNT1 < TIMER_TOO_CLOSE) {
-            coil1->set_spark_time(spark_time1);
+    class CoilHandler : public Task {
+    public:
+        CoilHandler(RotationSensor *crankshaft,
+                     Coil *coil,
+                     uint16_t angle) :
+            crankshaft(crankshaft),
+            coil(coil),
+            angle(angle)
+        {
         }
 
-        uint16_t spark_time2 = crankshaft->estimate_time_for_angle(32768);
-        if (spark_time2 - TCNT1 < TIMER_TOO_CLOSE) {
-            coil2->set_spark_time(spark_time2);
+        virtual void execute()
+        {
+            uint16_t abs_time = crankshaft->estimate_time_for_angle(angle);
+            uint16_t time_from_now = abs_time - tick;
+            if (time_from_now > TIMER_TOO_CLOSE && time_from_now < TIMER_TOO_FAR) {
+                // We only update if the spark will happen soon enough but not too soon
+                coil->set_spark_time(abs_time);
+            }
+        }
+    protected:
+        RotationSensor *crankshaft;
+        Coil *coil;
+        uint16_t angle;
+    };
+
+
+    class InjectorHandler: public Task {
+    public:
+        InjectorHandler(RotationSensor *crankshaft,
+                        DigitalOutputPin *injector,
+                        uint16_t angle) :
+            crankshaft(crankshaft),
+            injector(injector),
+            angle(angle)
+        {
         }
 
-        uint16_t injector_time1 = crankshaft->estimate_time_for_angle(16000);
-        if (injector_time1 - TCNT1 < TIMER_TOO_CLOSE) {
-            injector1->set(true, injector_time1, INJECTOR_PULSE_DURATION);
+        virtual void execute()
+        {
+            uint16_t abs_time = crankshaft->estimate_time_for_angle(angle);
+            uint16_t time_from_now = abs_time - tick;
+            if (time_from_now > TIMER_TOO_CLOSE && time_from_now < TIMER_TOO_FAR) {
+                // We only update if the injector will happen soon enough but not too soon
+                injector->set(true, abs_time, INJECTOR_PULSE_DURATION);
+            }
         }
 
-        uint16_t injector_time2 = crankshaft->estimate_time_for_angle(48000);
-        if (injector_time2 - TCNT1 < TIMER_TOO_CLOSE) {
-            injector2->set(true, injector_time2, INJECTOR_PULSE_DURATION);
-        }
-    }
+    protected:
+        RotationSensor *crankshaft;
+        DigitalOutputPin *injector;
+        uint16_t angle;
+    };
 
-protected:
     RotationSensor *crankshaft;
-    Coil *coil1;
-    Coil *coil2;
-    DigitalOutputPin *injector1;
-    DigitalOutputPin *injector2;
+    CoilHandler coil_handler_1;
+    CoilHandler coil_handler_2;
+    InjectorHandler injector_handler_1;
+    InjectorHandler injector_handler_2;
 };

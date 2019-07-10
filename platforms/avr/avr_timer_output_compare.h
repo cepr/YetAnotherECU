@@ -33,56 +33,49 @@ public:
     virtual void set(bool value)
     {
         set_pin_value(value);
-        if (mode != MODE_GPIO) {
+        if (state != STATE_CONTINUOUS) {
             // Switch port to normal operation
             disable_output_compare_interrupt();
             set_compare_output_mode(0);
             set_pin_direction(true);
-            mode = MODE_GPIO;
+            state = STATE_CONTINUOUS;
         }
     }
 
     virtual void set(bool value, uint16_t start, uint16_t duration)
     {
         this->pulse_value = value;
-        this->pulse_start = start;
-        this->pulse_duration = duration;
-        execute();
-        if (mode != MODE_TIMER) {
-            // Initialize the output compare unit
-            enable_output_compare_interrupt();
-            set_pin_direction(true);
-            mode = MODE_TIMER;
-        }
+        this->pulse_end = start + duration;
+        this->state = STATE_WAIT_FOR_PULSE_START;
+        set_compare_output_mode(pulse_value ? 3 : 2);
+        set_output_compare_register(start);
+        enable_output_compare_interrupt();
+        set_pin_direction(true); // set as output
     }
 
 protected:
     // Constructor
     AvrTimerOutputCompare() :
-        mode(MODE_DEFAULT),
+        state(STATE_IDLE),
         pulse_value(false),
-        pulse_start(0),
-        pulse_duration(0)
+        pulse_end(0)
     {
     }
 
     // Task implementation
     // This method is called when:
-    // - the pulse parameters have changed (start, value, duration)
-    // - the timer compare match interrupt happened
+    // - it's time to start the pulse
+    // - it's time to end the pulse
     void execute()
     {
-        // Output compare mode
-        uint16_t now = get_timer_counter();
-        uint16_t x = now - pulse_start;
-        if (x < pulse_duration) {
-            // We are currently inside the pulse, program the end of the pulse
+        if (state == STATE_WAIT_FOR_PULSE_START) {
             set_compare_output_mode(pulse_value ? 2 : 3);
-            set_output_compare_register(pulse_start + pulse_duration);
-        } else {
-            // Outside of the pulse, we must program the next pulse
-            set_compare_output_mode(pulse_value ? 3 : 2);
-            set_output_compare_register(pulse_start);
+            set_output_compare_register(pulse_end);
+        } else if (state == STATE_WAIT_FOR_PULSE_END) {
+            // Switch port to normal operation
+            disable_output_compare_interrupt();
+            set_compare_output_mode(0);
+            state = STATE_IDLE;
         }
     }
 
@@ -111,11 +104,11 @@ protected:
 
     // Attributes
     enum {
-        MODE_DEFAULT,
-        MODE_GPIO,
-        MODE_TIMER
-    } mode;
+        STATE_IDLE,
+        STATE_CONTINUOUS,
+        STATE_WAIT_FOR_PULSE_START,
+        STATE_WAIT_FOR_PULSE_END
+    } state;
     bool pulse_value;
-    uint16_t pulse_start;
-    uint16_t pulse_duration;
+    uint16_t pulse_end;
 };

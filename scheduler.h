@@ -19,6 +19,9 @@
 #pragma once
 #include "task.h"
 #include "linked_queue.h"
+#include <stdint.h>
+
+extern uint16_t tick;
 
 /**
  * @brief

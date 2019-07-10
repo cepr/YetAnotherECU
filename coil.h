@@ -19,6 +19,7 @@
 #pragma once
 #include <stdint.h>
 #include "pin.h"
+#include "parameters.h"
 
 /**
  * @brief
@@ -33,9 +34,8 @@ public:
      * @param pin
      *      Digital output pin the coil is connected to.
      */
-    Coil(DigitalOutputPin *pin, uint16_t pulse_duration) :
-        pin(pin),
-        pulse_duration(pulse_duration)
+    Coil(DigitalOutputPin *pin) :
+        pin(pin)
     {
     }
 
@@ -47,10 +47,10 @@ public:
      */
     void set_spark_time(uint16_t time)
     {
+        uint16_t pulse_duration = parameters.ignition_pulse_width.get();
         pin->set(true, time - pulse_duration, pulse_duration);
     }
 
 protected:
     DigitalOutputPin *pin;
-    uint16_t pulse_duration;
 };

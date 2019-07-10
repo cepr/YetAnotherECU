@@ -70,6 +70,7 @@ all: \
      platforms/avr/avr_injector_test.hex
 
 platforms/avr/avr_main: \
+     parameters.o \
      platforms/avr/avr_main.o \
      platforms/avr/avr_oc3c.o \
      platforms/avr/avr_oc1b.o \
@@ -104,6 +105,7 @@ platforms/avr/avr_timer_input_capture_test: \
     platforms/avr/avr_init.o
 
 platforms/avr/avr_ignitor_test: \
+    parameters.o \
     platforms/avr/avr_ignitor_test.o \
     platforms/avr/avr_scheduler.o \
     platforms/avr/avr_oc3a.o \
@@ -120,6 +122,7 @@ platforms/avr/avr_injector_test: \
 
 clean:
 	$(RM) \
+	parameters.o \
 	platforms/avr/avr_icp1.o \
 	platforms/avr/avr_ignitor_test \
 	platforms/avr/avr_ignitor_test.hex \
@@ -148,4 +151,5 @@ clean:
 	platforms/avr/avr_injector_test \
 	platforms/avr/avr_injector_test.hex \
 	platforms/avr/avr_injector_test.o
+
 

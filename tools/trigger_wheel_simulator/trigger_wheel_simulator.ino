@@ -37,7 +37,21 @@ byte repeat = 100;
 void loop() {
   if (Serial.available()) {
     byte b = Serial.read();
-    repeat = (b - '0') * 10;
+    if (b=='+') {
+      repeat++;
+    } else if (b=='-') {
+      repeat--;
+    } else if (b >= '0' and b <= '9') {
+      repeat = (b - '0') * 10;
+    }
+  }
+  for (int j = 0; j < repeat; j++) {
+    digitalWrite(10, HIGH);
+    digitalWrite(11, HIGH);
+  }
+  for (int j = 0; j < repeat; j++) {
+    digitalWrite(10, HIGH);
+    digitalWrite(11, LOW);
   }
   for (int i = 0; i < 35; i++) {
     for (int j = 0; j < repeat; j++) {
@@ -48,13 +62,5 @@ void loop() {
       digitalWrite(10, LOW);
       digitalWrite(11, LOW);
     }
-  }
-  for (int j = 0; j < repeat; j++) {
-    digitalWrite(10, HIGH);
-    digitalWrite(11, HIGH);
-  }
-  for (int j = 0; j < repeat; j++) {
-    digitalWrite(10, HIGH);
-    digitalWrite(11, LOW);
   }
 }
